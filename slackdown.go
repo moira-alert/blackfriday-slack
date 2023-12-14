@@ -12,11 +12,9 @@ import (
 type Renderer struct {
 	w             bytes.Buffer
 	lastOutputLen int
+	itemLevel     int
+	itemListMap   map[int]int
 }
-
-var itemLevel = 0
-
-var itemListMap = make(map[int]int)
 
 var (
 	strongTag        = []byte("*")
@@ -105,14 +103,14 @@ func (r *Renderer) RenderNode(w io.Writer, node *bf.Node, entering bool) bf.Walk
 	case bf.Item:
 		if entering {
 			r.out(w, spaceBytes)
-			for i := 1; i < itemLevel; i++ {
+			for i := 1; i < r.itemLevel; i++ {
 				r.out(w, spaceBytes)
 				r.out(w, spaceBytes)
 				r.out(w, spaceBytes)
 			}
 			if node.ListFlags&bf.ListTypeOrdered != 0 {
-				r.out(w, append([]byte(strconv.Itoa(itemListMap[itemLevel])), node.ListData.Delimiter))
-				itemListMap[itemLevel]++
+				r.out(w, append([]byte(strconv.Itoa(r.itemListMap[r.itemLevel])), node.ListData.Delimiter))
+				r.itemListMap[r.itemLevel]++
 			} else {
 				r.out(w, itemTag)
 			}
@@ -134,16 +132,16 @@ func (r *Renderer) RenderNode(w io.Writer, node *bf.Node, entering bool) bf.Walk
 		break
 	case bf.List:
 		if entering {
-			itemLevel++
+			r.itemLevel++
 			if node.ListFlags&bf.ListTypeOrdered != 0 {
-				itemListMap[itemLevel] = 1
+				r.itemListMap[r.itemLevel] = 1
 			}
 		} else {
 			if node.ListFlags&bf.ListTypeOrdered != 0 {
-				delete(itemListMap, itemLevel)
+				delete(r.itemListMap, r.itemLevel)
 			}
-			itemLevel--
-			if itemLevel == 0 {
+			r.itemLevel--
+			if r.itemLevel == 0 {
 				r.cr(w)
 			}
 		}
@@ -186,6 +184,9 @@ func (r *Renderer) RenderNode(w io.Writer, node *bf.Node, entering bool) bf.Walk
 
 // Render prints out the whole document from the ast.
 func (r *Renderer) Render(ast *bf.Node) []byte {
+	r.itemLevel = 0
+	r.itemListMap = make(map[int]int)
+
 	ast.Walk(func(node *bf.Node, entering bool) bf.WalkStatus {
 		return r.RenderNode(&r.w, node, entering)
 	})
