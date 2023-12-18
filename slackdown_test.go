@@ -3,7 +3,7 @@ package slackdown_test
 import (
 	"testing"
 
-	"github.com/karriereat/blackfriday-slack"
+	slackdown "github.com/moira-alert/blackfriday-slack"
 	bf "github.com/russross/blackfriday/v2"
 )
 
